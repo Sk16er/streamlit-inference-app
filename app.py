@@ -1,56 +1,97 @@
 import streamlit as st
 from transformers import pipeline
 
-# Set page config for a nice layout
-st.set_page_config(page_title="Inference Provider", page_icon="🤖", layout="wide")
+# Set the page configuration for dark mode
+st.set_page_config(page_title="AI Assistant", page_icon="🤖", layout="centered")
 
-# Title and description
-st.title("Inference Provider")
+# Title and intro
+st.title("AI Assistant 🤖")
 st.markdown("""
-    This app uses the deepset/roberta-base-squad2 model to provide question-answering capabilities.
-    You can ask a question, and the model will attempt to provide an answer based on the context.
-    Sign in with your Hugging Face account to use this feature.
+    ## Welcome to your Personal Assistant!
+    Ask me anything, and I’ll do my best to assist you. The AI is powered by `meta-llama/Llama-3.1-8B-Instruct`.
+    - **Sidebar**: Start a new conversation or adjust settings.
+    - **Dark Mode**: I've made sure to give you a cool, modern interface to keep things sleek and smooth!
 """)
 
-# Sidebar for login information
-st.sidebar.markdown("### Login with Hugging Face")
-st.sidebar.markdown("Sign in to use the Hugging Face API and access model inference.")
+# Load the LLM model (meta-llama/Llama-3.1-8B-Instruct)
+@st.cache_resource
+def load_model():
+    return pipeline("text-generation", model="meta-llama/Llama-3.1-8B-Instruct")
 
-# Add a text input for the question and a button to trigger the answer
-question = st.text_input("Ask a question:", "")
-answer = None
+# Sidebar: To start a new conversation
+st.sidebar.title("Start New Conversation")
+if st.sidebar.button("Clear Conversation"):
+    st.session_state['messages'] = []
 
-# Load the Hugging Face model for question answering
-qa_pipeline = pipeline("question-answering", model="deepset/roberta-base-squad2")
+# Initialize conversation history if not already in session_state
+if 'messages' not in st.session_state:
+    st.session_state['messages'] = []
 
-# Function to handle question answering
-if question:
-    answer = qa_pipeline({
-        'context': "Hugging Face is creating a tool that democratizes AI. The deepset/roberta-base-squad2 model is great for answering questions from a given context.",
-        'question': question
-    })
+# User Input Textbox
+user_input = st.text_input("You: ", "")
 
-    # Display the answer in a nice format
-    st.markdown(f"**Answer:** {answer['answer']}")
+# Handle interaction when the user submits a question
+if user_input:
+    # Add user question to the conversation history
+    st.session_state['messages'].append({"role": "user", "content": user_input})
 
-# Add styling (to make the UI look more like a chat)
+    # Generate AI response using the Llama model
+    model = load_model()
+    response = model(f"Question: {user_input} Answer: ")
+
+    # Extract the generated text (AI response)
+    answer = response[0]['generated_text']
+
+    # Add AI response to conversation history
+    st.session_state['messages'].append({"role": "assistant", "content": answer})
+
+# Display the conversation history (questions and answers)
+for message in st.session_state['messages']:
+    if message["role"] == "user":
+        st.markdown(f"<div class='user-message'>{message['content']}</div>", unsafe_allow_html=True)
+    else:
+        st.markdown(f"<div class='assistant-message'>{message['content']}</div>", unsafe_allow_html=True)
+
+# Custom CSS to style the chatbot interface (dark mode)
 st.markdown("""
     <style>
-        .stTextInput>div>div>input {
-            border-radius: 10px;
-            padding: 15px;
-            font-size: 16px;
+        body {
+            background-color: #333;
+            color: white;
         }
-        .stMarkdown {
-            padding: 20px;
-            background-color: #f5f5f5;
+        .user-message {
+            background-color: #4CAF50;
+            padding: 10px;
             border-radius: 10px;
+            margin-bottom: 10px;
+            text-align: right;
+        }
+        .assistant-message {
+            background-color: #2F4F4F;
+            padding: 10px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            text-align: left;
+        }
+        .stTextInput>div>div>input {
+            background-color: #444;
+            color: white;
+            border-radius: 15px;
+            padding: 10px;
+            font-size: 18px;
+        }
+        .stTextInput>div>div>input:focus {
+            background-color: #555;
+        }
+        .stSidebar {
+            background-color: #222;
+            color: white;
         }
         .stButton>button {
             background-color: #4CAF50;
             color: white;
-            font-size: 16px;
             border-radius: 10px;
         }
     </style>
 """, unsafe_allow_html=True)
+
